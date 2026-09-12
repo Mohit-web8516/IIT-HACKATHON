@@ -87,8 +87,9 @@ The goal is to make productivity more engaging by turning real-world activities 
 
 ---
 
-## 📂 Project Structure
+## 📁 Project Structure
 
+```text
 IIT-HACKATHON/
 │
 ├── frontend/
@@ -96,9 +97,7 @@ IIT-HACKATHON/
 │   │   ├── components/
 │   │   ├── pages/
 │   │   ├── hooks/
-│   │   ├── services/
-│   │   └── ...
-│   │
+│   │   └── services/
 │   ├── public/
 │   ├── .env
 │   ├── package.json
@@ -106,18 +105,14 @@ IIT-HACKATHON/
 │
 ├── backend/
 │   ├── config/
-│   │   └── supabase.js
-│   │
 │   ├── middleware/
-│   │   └── auth.js
-│   │
+│   ├── auth.js
 │   ├── server.js
 │   ├── package.json
 │   └── .env
 │
 ├── .gitignore
 └── README.md
-
 ---
 
 ## ⚙️ Local Installation
