@@ -10,14 +10,9 @@ Instead of simply maintaining a traditional to-do list, QuestForge lets users cr
 
 ## 🌐 Live Demo
 
-### Frontend
+### QuestForge Website
 
-https://iit-hackathon-j745.onrender.com
-
-### Backend
-
-https://iit-hackathon-backend.onrender.com
-
+https://iit-hackathon-i745.onrender.com
 ---
 
 ## ✨ Features
