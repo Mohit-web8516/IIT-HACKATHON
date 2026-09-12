@@ -124,7 +124,7 @@ function Dashboard() {
   }
 
   // ==========================================================
-  //   LOAD CHARACTER + ACTIVITIES
+  // LOAD CHARACTER + ACTIVITIES
   // ==========================================================
 
   useEffect(() => {

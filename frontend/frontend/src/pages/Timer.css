@@ -1,0 +1,227 @@
+/* =========================================================
+   TIMER PAGE
+   ========================================================= */
+
+.timer-page {
+  min-height: 100vh;
+  padding: 40px 6%;
+  background: #090909;
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.timer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 45px;
+}
+
+.timer-eyebrow {
+  margin: 0 0 8px;
+  color: #a78bfa;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.timer-header h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.timer-subtitle {
+  margin: 14px 0 0;
+  color: #a1a1aa;
+  font-size: 17px;
+}
+
+.timer-back-button {
+  padding: 12px 20px;
+  border: 1px solid #2f2f35;
+  border-radius: 10px;
+  background: #171717;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-back-button:hover {
+  background: #222222;
+  border-color: #55555f;
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   TIMER CARD
+   ========================================================= */
+
+.timer-card {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 65px 30px;
+  border: 1px solid #292929;
+  border-radius: 20px;
+  background: #111111;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.timer-label {
+  margin-bottom: 25px;
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+/* =========================================================
+   TIMER DISPLAY
+   ========================================================= */
+
+.timer-display {
+  font-size: clamp(64px, 12vw, 120px);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-status {
+  margin-top: 22px;
+  color: #71717a;
+  font-size: 15px;
+}
+
+/* =========================================================
+   CONTROLS
+   ========================================================= */
+
+.timer-controls {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 40px;
+}
+
+.timer-primary-button,
+.timer-reset-button {
+  min-width: 140px;
+  padding: 14px 22px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-primary-button {
+  border: none;
+  background: #a78bfa;
+  color: #090909;
+}
+
+.timer-primary-button:hover {
+  background: #b8a0ff;
+  transform: translateY(-1px);
+}
+
+.timer-reset-button {
+  border: 1px solid #353535;
+  background: #181818;
+  color: #ffffff;
+}
+
+.timer-reset-button:hover {
+  background: #242424;
+  border-color: #555555;
+}
+
+/* =========================================================
+   INFORMATION CARDS
+   ========================================================= */
+
+.timer-info {
+  max-width: 900px;
+  margin: 35px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.timer-info-card {
+  padding: 28px;
+  border: 1px solid #282828;
+  border-radius: 15px;
+  background: #111111;
+}
+
+.timer-info-icon {
+  margin-bottom: 12px;
+  font-size: 32px;
+}
+
+.timer-info-card h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.timer-info-card p {
+  margin: 0;
+  color: #888888;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .timer-page {
+    padding: 25px 18px;
+  }
+
+  .timer-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .timer-header h1 {
+    font-size: 36px;
+  }
+
+  .timer-back-button {
+    width: 100%;
+  }
+
+  .timer-card {
+    padding: 50px 18px;
+  }
+
+  .timer-display {
+    font-size: 55px;
+    letter-spacing: 2px;
+  }
+
+  .timer-controls {
+    flex-direction: column;
+  }
+
+  .timer-primary-button,
+  .timer-reset-button {
+    width: 100%;
+  }
+
+  .timer-info {
+    grid-template-columns: 1fr;
+  }
+}

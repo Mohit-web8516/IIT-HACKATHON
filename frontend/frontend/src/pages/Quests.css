@@ -1,0 +1,661 @@
+/* =========================================================
+   LIFE RPG — QUESTS PAGE
+   ========================================================= */
+
+.quests-page {
+  min-height: 100vh;
+  padding: 40px 6%;
+  background:
+    radial-gradient(circle at top left, rgba(139, 92, 246, 0.08), transparent 35%),
+    #080808;
+  color: #f8fafc;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.quests-header {
+  max-width: 1280px;
+  margin: 0 auto 40px;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.quests-eyebrow {
+  margin: 0 0 10px;
+
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+
+  color: #a78bfa;
+}
+
+.quests-header h1 {
+  margin: 0;
+
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+
+  color: #ffffff;
+}
+
+.quests-subtitle {
+  margin: 14px 0 0;
+
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.back-button {
+  border: 1px solid #292929;
+  background: #151515;
+  color: #f8fafc;
+
+  padding: 13px 20px;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.back-button:hover {
+  background: #202020;
+  border-color: #444;
+  transform: translateY(-2px);
+}
+
+/* =========================================================
+   CREATE QUEST CARD
+   ========================================================= */
+
+.quest-create-card {
+  max-width: 1280px;
+  margin: 0 auto 45px;
+
+  padding: 30px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(28, 20, 34, 0.98),
+      rgba(14, 14, 14, 0.98)
+    );
+
+  border: 1px solid #30223a;
+  border-radius: 20px;
+
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.section-label {
+  margin: 0 0 8px;
+
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+
+  color: #a78bfa;
+}
+
+.quest-create-card h2,
+.quests-list-header h2 {
+  margin: 0;
+
+  font-size: 27px;
+  font-weight: 800;
+
+  color: #ffffff;
+}
+
+.quest-form {
+  margin-top: 28px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  box-sizing: border-box;
+
+  border: 1px solid #303030;
+  border-radius: 11px;
+
+  background: #111111;
+  color: #f8fafc;
+
+  padding: 13px 15px;
+
+  font-size: 14px;
+  font-family: inherit;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #64748b;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #8b5cf6;
+
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.12);
+
+  background: #151515;
+}
+
+.form-group textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* =========================================================
+   FORM ROW
+   ========================================================= */
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 22px;
+}
+
+/* =========================================================
+   DIFFICULTY
+   ========================================================= */
+
+.difficulty-options {
+  display: flex;
+  gap: 9px;
+}
+
+.difficulty-button {
+  flex: 1;
+
+  padding: 12px 14px;
+
+  border: 1px solid #303030;
+  border-radius: 10px;
+
+  background: #111111;
+  color: #94a3b8;
+
+  font-weight: 700;
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition:
+    all 0.2s ease;
+}
+
+.difficulty-button:hover {
+  border-color: #555;
+  color: #ffffff;
+}
+
+.difficulty-button.active {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.14);
+  color: #c4b5fd;
+
+  box-shadow:
+    0 0 18px rgba(139, 92, 246, 0.08);
+}
+
+/* =========================================================
+   REWARD PREVIEW
+   ========================================================= */
+
+.quest-reward {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+
+  padding: 16px 18px;
+
+  border: 1px solid #28202f;
+  border-radius: 12px;
+
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.reward-label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  color: #94a3b8;
+}
+
+.reward-value {
+  font-size: 14px;
+  font-weight: 800;
+
+  color: #f8fafc;
+}
+
+/* =========================================================
+   MESSAGES
+   ========================================================= */
+
+.quest-error,
+.quest-success {
+  padding: 13px 16px;
+
+  border-radius: 10px;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.quest-error {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(127, 29, 29, 0.18);
+  color: #fca5a5;
+}
+
+.quest-success {
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: rgba(22, 101, 52, 0.15);
+  color: #86efac;
+}
+
+.reward-message {
+  margin-bottom: 20px;
+}
+
+/* =========================================================
+   CREATE BUTTON
+   ========================================================= */
+
+.create-quest-button {
+  border: none;
+  border-radius: 11px;
+
+  padding: 15px 20px;
+
+  background: #8b5cf6;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.create-quest-button:hover:not(:disabled) {
+  background: #9f67ff;
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 10px 25px rgba(139, 92, 246, 0.22);
+}
+
+.create-quest-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   QUEST LIST SECTION
+   ========================================================= */
+
+.quests-list-section {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.quests-list-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  margin-bottom: 20px;
+}
+
+.quest-count {
+  padding: 7px 12px;
+
+  border: 1px solid #2c2c2c;
+  border-radius: 20px;
+
+  background: #111111;
+  color: #94a3b8;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   QUEST LIST
+   ========================================================= */
+
+.quests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.quest-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+
+  padding: 22px 24px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #151515,
+      #101010
+    );
+
+  border: 1px solid #272727;
+  border-radius: 16px;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.quest-card:hover {
+  transform: translateY(-2px);
+  border-color: #3f3f3f;
+  background: #171717;
+}
+
+.quest-card.completed {
+  opacity: 0.7;
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.quest-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.quest-title {
+  margin: 0;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  color: #ffffff;
+}
+
+.quest-card.completed .quest-title {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.quest-description {
+  margin: 7px 0 0;
+
+  font-size: 13px;
+  line-height: 1.5;
+
+  color: #7f8ea3;
+}
+
+.quest-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  margin-top: 13px;
+}
+
+.quest-meta span {
+  padding: 5px 9px;
+
+  border: 1px solid #2d2d2d;
+  border-radius: 7px;
+
+  background: #0d0d0d;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  color: #94a3b8;
+}
+
+.quest-meta .xp {
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.quest-meta .gold {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+/* =========================================================
+   COMPLETE BUTTON
+   ========================================================= */
+
+.complete-quest-button {
+  flex-shrink: 0;
+
+  padding: 11px 17px;
+
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+
+  background: rgba(139, 92, 246, 0.12);
+  color: #c4b5fd;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.complete-quest-button:hover:not(:disabled) {
+  background: #8b5cf6;
+  color: #ffffff;
+  border-color: #8b5cf6;
+
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 20px rgba(139, 92, 246, 0.2);
+}
+
+.complete-quest-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   COMPLETED BADGE
+   ========================================================= */
+
+.completed-badge {
+  flex-shrink: 0;
+
+  padding: 9px 13px;
+
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 9px;
+
+  background: rgba(34, 197, 94, 0.08);
+  color: #86efac;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.empty-quests {
+  padding: 70px 20px;
+
+  text-align: center;
+
+  background: #101010;
+
+  border: 1px dashed #303030;
+  border-radius: 18px;
+}
+
+.empty-icon {
+  margin-bottom: 14px;
+
+  font-size: 48px;
+}
+
+.empty-quests h3 {
+  margin: 0 0 8px;
+
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.empty-quests p {
+  max-width: 430px;
+  margin: 0 auto;
+
+  font-size: 14px;
+  line-height: 1.6;
+
+  color: #64748b;
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.quest-loading {
+  min-height: 70vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #a78bfa;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .quests-page {
+    padding: 30px 5%;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .quests-header {
+    flex-direction: column;
+  }
+
+  .back-button {
+    align-self: flex-start;
+  }
+
+  .quest-create-card {
+    padding: 22px;
+  }
+
+  .quest-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complete-quest-button,
+  .completed-badge {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 500px) {
+  .quests-page {
+    padding: 25px 16px;
+  }
+
+  .quests-header h1 {
+    font-size: 40px;
+  }
+
+  .difficulty-options {
+    flex-direction: column;
+  }
+
+  .quest-reward {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .quests-list-header {
+    align-items: flex-start;
+    gap: 15px;
+    flex-direction: column;
+  }
+}
