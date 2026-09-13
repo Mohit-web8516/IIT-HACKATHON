@@ -4,8 +4,6 @@ import { useAuth } from "../hooks/useAuth";
 import { getOrCreateCharacter } from "../services/character";
 import { supabase } from "../lib/supabase";
 import "./Dashboard.css";
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -40,10 +38,7 @@ function Dashboard() {
 
     return `${String(hours).padStart(2, "0")}:${String(
       minutes
-    ).padStart(2, "0")}:${String(remainingSeconds).padStart(
-      2,
-      "0"
-    )}`;
+    ).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   }
 
   // ==========================================================
@@ -51,9 +46,7 @@ function Dashboard() {
   // ==========================================================
 
   const [countdownMinutes, setCountdownMinutes] = useState(25);
-  const [countdownSeconds, setCountdownSeconds] = useState(
-    25 * 60
-  );
+  const [countdownSeconds, setCountdownSeconds] = useState(25 * 60);
   const [countdownRunning, setCountdownRunning] = useState(false);
 
   useEffect(() => {
@@ -106,25 +99,7 @@ function Dashboard() {
   }
 
   // ==========================================================
-  // AUTH TOKEN
-  // ==========================================================
-
-  async function getAccessToken() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      throw new Error(
-        "Authentication session expired. Please login again."
-      );
-    }
-
-    return session.access_token;
-  }
-
-  // ==========================================================
-  //   LOAD CHARACTER + ACTIVITIES
+  // LOAD DATA
   // ==========================================================
 
   useEffect(() => {
@@ -137,34 +112,38 @@ function Dashboard() {
 
     async function loadData() {
       try {
+        setLoading(true);
+        setError("");
+
+        // Load / create character
         const characterData = await getOrCreateCharacter(user.id);
+
+        if (!characterData) {
+          throw new Error("Character could not be loaded.");
+        }
 
         setCharacter(characterData);
 
-        const token = await getAccessToken();
+        // ======================================================
+        // LOAD ACTIVITIES DIRECTLY FROM SUPABASE
+        // This removes dependency on the broken Render /api/tasks
+        // ======================================================
 
-        const response = await fetch(`${API_URL}/api/tasks`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const { data: taskData, error: taskError } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error(
-              "Authentication failed. Please login again."
-            );
-          }
-
-          throw new Error("Failed to fetch activities");
+        if (taskError) {
+          console.error("SUPABASE TASK ERROR:", taskError);
+          throw new Error(taskError.message);
         }
 
-        const questData = await response.json();
-
-        setQuests(questData || []);
+        setQuests(taskData || []);
       } catch (err) {
         console.error("DASHBOARD LOAD ERROR:", err);
-        setError(err.message);
+        setError(err.message || "Failed to load dashboard");
       } finally {
         setLoading(false);
       }
@@ -185,29 +164,17 @@ function Dashboard() {
     if (!confirmed) return;
 
     try {
-      const token = await getAccessToken();
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
 
-      const response = await fetch(
-        `${API_URL}/api/tasks/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to delete activity"
-        );
+      if (error) {
+        throw new Error(error.message);
       }
 
-      setQuests((prev) =>
-        prev.filter((quest) => quest.id !== id)
-      );
+      setQuests((prev) => prev.filter((quest) => quest.id !== id));
     } catch (err) {
       console.error("DELETE ACTIVITY ERROR:", err);
       alert(err.message);
@@ -220,29 +187,129 @@ function Dashboard() {
 
   async function completeQuest(id) {
     try {
-      const token = await getAccessToken();
+      const quest = quests.find((item) => item.id === id);
 
-      const response = await fetch(
-        `${API_URL}/api/tasks/${id}/complete`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to complete activity"
-        );
+      if (!quest) {
+        throw new Error("Activity not found.");
       }
 
+      if (quest.completed) {
+        return;
+      }
+
+      const earnedXP = Number(quest.xp_reward) || 10;
+
+      // --------------------------------------------------------
+      // COMPLETE TASK
+      // --------------------------------------------------------
+
+      const { data: completedTask, error: taskError } = await supabase
+        .from("tasks")
+        .update({
+          completed: true,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (taskError) {
+        throw new Error(taskError.message);
+      }
+
+      // --------------------------------------------------------
+      // GET CHARACTER
+      // --------------------------------------------------------
+
+      const { data: currentCharacter, error: characterError } =
+        await supabase
+          .from("characters")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+      if (characterError || !currentCharacter) {
+        throw new Error("Character not found.");
+      }
+
+      // --------------------------------------------------------
+      // XP
+      // --------------------------------------------------------
+
+      let newXP = Number(currentCharacter.xp || 0) + earnedXP;
+      let newLevel = Number(currentCharacter.level || 1);
+
+      const oldLevel = newLevel;
+
+      while (newXP >= 100) {
+        newXP -= 100;
+        newLevel += 1;
+      }
+
+      // --------------------------------------------------------
+      // GOLD
+      // --------------------------------------------------------
+
+      let earnedGold = 5;
+
+      if (quest.difficulty === "Medium") {
+        earnedGold = 10;
+      }
+
+      if (quest.difficulty === "Hard") {
+        earnedGold = 20;
+      }
+
+      const newGold =
+        Number(currentCharacter.gold || 0) + earnedGold;
+
+      // --------------------------------------------------------
+      // SUPER CHARACTER
+      // --------------------------------------------------------
+
+      let superCharacterUnlocked =
+        currentCharacter.super_character_unlocked || false;
+
+      if (newLevel >= 5) {
+        superCharacterUnlocked = true;
+      }
+
+      // --------------------------------------------------------
+      // UPDATE CHARACTER
+      // --------------------------------------------------------
+
+      const { data: updatedCharacter, error: updateError } =
+        await supabase
+          .from("characters")
+          .update({
+            xp: newXP,
+            level: newLevel,
+            gold: newGold,
+            super_character_unlocked: superCharacterUnlocked,
+          })
+          .eq("user_id", user.id)
+          .select()
+          .single();
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      setCharacter(updatedCharacter);
+
+      // Update task in UI
       setQuests((prev) =>
-        prev.map((quest) =>
-          quest.id === id ? result : quest
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...completedTask,
+                character: updatedCharacter,
+                earnedXP,
+                earnedGold,
+                levelUp: newLevel > oldLevel,
+              }
+            : item
         )
       );
     } catch (err) {
@@ -312,16 +379,18 @@ function Dashboard() {
 
           <h2>Character not found</h2>
 
-          <p>
-            We couldn't load your RPG character.
-          </p>
+          <p>We couldn't load your RPG character.</p>
         </div>
       </main>
     );
   }
 
+  // ==========================================================
+  // DASHBOARD DATA
+  // ==========================================================
+
   const xpProgress = Math.min(
-    (character.xp / 100) * 100,
+    (Number(character.xp || 0) / 100) * 100,
     100
   );
 
@@ -346,9 +415,7 @@ function Dashboard() {
     <main className="dashboard-page">
       <div className="dashboard-container">
 
-        {/* ==================================================
-            HEADER
-        ================================================== */}
+        {/* HEADER */}
 
         <header className="dashboard-header">
           <div>
@@ -372,9 +439,7 @@ function Dashboard() {
           </button>
         </header>
 
-        {/* ==================================================
-            CHARACTER
-        ================================================== */}
+        {/* CHARACTER */}
 
         <section className="character-overview">
           <div className="character-card">
@@ -445,9 +510,7 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* ==================================================
-            DASHBOARD GRID
-        ================================================== */}
+        {/* DASHBOARD GRID */}
 
         <section className="dashboard-grid">
 
@@ -470,7 +533,6 @@ function Dashboard() {
             <div className="attributes-list">
 
               <div className="attribute">
-
                 <span className="attribute-icon">
                   💪
                 </span>
@@ -489,7 +551,7 @@ function Dashboard() {
                     <div
                       style={{
                         width: `${Math.min(
-                          character.strength,
+                          Number(character.strength || 0),
                           100
                         )}%`,
                       }}
@@ -500,7 +562,6 @@ function Dashboard() {
               </div>
 
               <div className="attribute">
-
                 <span className="attribute-icon">
                   🧠
                 </span>
@@ -519,7 +580,7 @@ function Dashboard() {
                     <div
                       style={{
                         width: `${Math.min(
-                          character.intellect,
+                          Number(character.intellect || 0),
                           100
                         )}%`,
                       }}
@@ -530,7 +591,6 @@ function Dashboard() {
               </div>
 
               <div className="attribute">
-
                 <span className="attribute-icon">
                   🎯
                 </span>
@@ -549,7 +609,7 @@ function Dashboard() {
                     <div
                       style={{
                         width: `${Math.min(
-                          character.discipline,
+                          Number(character.discipline || 0),
                           100
                         )}%`,
                       }}
@@ -560,7 +620,6 @@ function Dashboard() {
               </div>
 
               <div className="attribute">
-
                 <span className="attribute-icon">
                   ❤️
                 </span>
@@ -579,7 +638,7 @@ function Dashboard() {
                     <div
                       style={{
                         width: `${Math.min(
-                          character.endurance,
+                          Number(character.endurance || 0),
                           100
                         )}%`,
                       }}
@@ -610,7 +669,7 @@ function Dashboard() {
 
               <div>
                 <strong>
-                  {character.current_streak}
+                  {character.current_streak || 0}
                 </strong>
 
                 <p>
@@ -625,16 +684,14 @@ function Dashboard() {
               <span>Best streak</span>
 
               <strong>
-                {character.longest_streak} days
+                {character.longest_streak || 0} days
               </strong>
 
             </div>
 
           </div>
 
-          {/* ==================================================
-              TRACK YOUR PROGRESS
-          ================================================== */}
+          {/* FOCUS */}
 
           <div
             className="dashboard-card focus-card"
@@ -863,16 +920,12 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* ==================================================
-              ACTIVITIES — ONLY ONE SECTION
-          ================================================== */}
+          {/* ACTIVITIES */}
 
           <div
             className="dashboard-card activity-card"
             style={{ gridColumn: "1 / -1" }}
           >
-
-            {/* HEADER */}
 
             <div className="card-header activity-header">
 
@@ -892,8 +945,6 @@ function Dashboard() {
               </button>
 
             </div>
-
-            {/* SUMMARY */}
 
             {quests.length > 0 && (
               <div className="activity-summary">
@@ -920,8 +971,6 @@ function Dashboard() {
 
               </div>
             )}
-
-            {/* EMPTY STATE */}
 
             {quests.length === 0 ? (
 
@@ -951,8 +1000,6 @@ function Dashboard() {
 
             ) : (
 
-              /* ACTIVITY LIST */
-
               <div className="activity-list">
 
                 {quests.map((quest) => (
@@ -966,15 +1013,11 @@ function Dashboard() {
                     key={quest.id}
                   >
 
-                    {/* STATUS */}
-
                     <div className="activity-icon">
                       {quest.completed
                         ? "✓"
                         : "⚔️"}
                     </div>
-
-                    {/* INFORMATION */}
 
                     <div className="activity-info">
 
@@ -995,13 +1038,9 @@ function Dashboard() {
 
                     </div>
 
-                    {/* XP */}
-
                     <div className="activity-reward">
                       ⭐ {quest.xp_reward} XP
                     </div>
-
-                    {/* COMPLETE + DELETE */}
 
                     <div className="activity-actions">
 

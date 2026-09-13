@@ -24,23 +24,7 @@ function Quests() {
   const [rewardMessage, setRewardMessage] = useState("");
 
   // =========================================================
-  // GET AUTH SESSION
-  // =========================================================
-
-  async function getAccessToken() {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      throw new Error("Authentication failed. Please login again.");
-    }
-
-    return session.access_token;
-  }
-
-  // =========================================================
-  // LOAD QUESTS
+  // LOAD QUESTS DIRECTLY FROM SUPABASE
   // =========================================================
 
   async function loadQuests() {
@@ -48,33 +32,22 @@ function Quests() {
       setLoading(true);
       setError("");
 
-      const token = await getAccessToken();
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/tasks`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.status === 401) {
-        throw new Error("Authentication failed. Please login again.");
+      if (!user?.id) {
+        throw new Error("User is not authenticated.");
       }
 
-      if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
+      const { data, error: fetchError } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-        throw new Error(
-          result.error || "Failed to fetch quests"
-        );
+      if (fetchError) {
+        console.error("SUPABASE LOAD QUESTS ERROR:", fetchError);
+        throw new Error(fetchError.message);
       }
 
-      const data = await response.json();
-
-      setQuests(Array.isArray(data) ? data : []);
+      setQuests(data || []);
     } catch (err) {
       console.error("LOAD QUESTS ERROR:", err);
       setError(err.message || "Failed to fetch quests");
@@ -116,39 +89,29 @@ function Quests() {
     try {
       setCreating(true);
 
-      const token = await getAccessToken();
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/tasks`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-
-          body: JSON.stringify({
-            title: title.trim(),
-            description: description.trim(),
-            difficulty,
-            xp_reward: Number(xpReward),
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to create quest"
-        );
+      if (!user?.id) {
+        throw new Error("User is not authenticated.");
       }
 
-      setQuests((previous) => [
-        result,
-        ...previous,
-      ]);
+      const { data, error: insertError } = await supabase
+        .from("tasks")
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim(),
+          difficulty,
+          xp_reward: Number(xpReward) || 10,
+          completed: false,
+        })
+        .select("*")
+        .single();
+
+      if (insertError) {
+        console.error("CREATE QUEST SUPABASE ERROR:", insertError);
+        throw new Error(insertError.message);
+      }
+
+      setQuests((previous) => [data, ...previous]);
 
       setTitle("");
       setDescription("");
@@ -162,10 +125,7 @@ function Quests() {
       }, 3000);
     } catch (err) {
       console.error("CREATE QUEST ERROR:", err);
-
-      setError(
-        err.message || "Failed to create quest"
-      );
+      setError(err.message || "Failed to create quest");
     } finally {
       setCreating(false);
     }
@@ -178,65 +138,172 @@ function Quests() {
   async function handleCompleteQuest(taskId) {
     try {
       setCompletingId(taskId);
-
       setError("");
       setSuccess("");
       setRewardMessage("");
 
-      const token = await getAccessToken();
+      if (!user?.id) {
+        throw new Error("User is not authenticated.");
+      }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/tasks/${taskId}/complete`,
-        {
-          method: "PATCH",
+      // -------------------------------------------------------
+      // GET QUEST
+      // -------------------------------------------------------
 
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const { data: quest, error: questError } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("id", taskId)
+        .eq("user_id", user.id)
+        .single();
 
-      const result = await response.json();
+      if (questError || !quest) {
+        throw new Error("Quest not found.");
+      }
 
-      if (response.status === 401) {
+      if (quest.completed) {
+        throw new Error("Quest is already completed.");
+      }
+
+      // -------------------------------------------------------
+      // MARK QUEST COMPLETED
+      // -------------------------------------------------------
+
+      const { data: completedQuest, error: completeError } =
+        await supabase
+          .from("tasks")
+          .update({
+            completed: true,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", taskId)
+          .eq("user_id", user.id)
+          .select("*")
+          .single();
+
+      if (completeError) {
+        console.error(
+          "COMPLETE QUEST SUPABASE ERROR:",
+          completeError
+        );
+        throw new Error(completeError.message);
+      }
+
+      // -------------------------------------------------------
+      // GET CHARACTER
+      // -------------------------------------------------------
+
+      const { data: character, error: characterError } =
+        await supabase
+          .from("characters")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+      if (characterError || !character) {
         throw new Error(
-          "Authentication failed. Please login again."
+          "Character not found. Please refresh the dashboard."
         );
       }
 
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to complete quest"
-        );
+      // -------------------------------------------------------
+      // CALCULATE XP
+      // -------------------------------------------------------
+
+      const earnedXP = Number(quest.xp_reward) || 10;
+
+      let newXP = Number(character.xp || 0) + earnedXP;
+      let newLevel = Number(character.level || 1);
+
+      const oldLevel = newLevel;
+
+      while (newXP >= 100) {
+        newXP -= 100;
+        newLevel += 1;
       }
 
-      // Update quest in UI immediately
+      // -------------------------------------------------------
+      // GOLD
+      // -------------------------------------------------------
+
+      let earnedGold = 5;
+
+      if (quest.difficulty === "Medium") {
+        earnedGold = 10;
+      }
+
+      if (quest.difficulty === "Hard") {
+        earnedGold = 20;
+      }
+
+      const newGold =
+        Number(character.gold || 0) + earnedGold;
+
+      // -------------------------------------------------------
+      // SUPER CHARACTER
+      // -------------------------------------------------------
+
+      const superCharacterUnlocked =
+        character.super_character_unlocked ||
+        newLevel >= 5;
+
+      // -------------------------------------------------------
+      // UPDATE CHARACTER
+      // -------------------------------------------------------
+
+      const { data: updatedCharacter, error: updateError } =
+        await supabase
+          .from("characters")
+          .update({
+            xp: newXP,
+            level: newLevel,
+            gold: newGold,
+            super_character_unlocked:
+              superCharacterUnlocked,
+          })
+          .eq("user_id", user.id)
+          .select("*")
+          .single();
+
+      if (updateError) {
+        console.error(
+          "UPDATE CHARACTER ERROR:",
+          updateError
+        );
+
+        // Try to keep the quest completed even if character
+        // update fails.
+        throw new Error(updateError.message);
+      }
+
+      // -------------------------------------------------------
+      // UPDATE UI
+      // -------------------------------------------------------
+
       setQuests((previous) =>
-        previous.map((quest) =>
-          quest.id === taskId
-            ? result.quest
-            : quest
+        previous.map((item) =>
+          item.id === taskId
+            ? completedQuest
+            : item
         )
       );
 
-      // Show reward
-      if (result.reward) {
-        setRewardMessage(
-          `🎉 Quest Complete! +${result.reward.xp} XP  +${result.reward.gold} Gold`
-        );
-      } else {
-        setRewardMessage(
-          "🎉 Quest completed successfully!"
+      setRewardMessage(
+        `🎉 Quest Complete! +${earnedXP} XP  +${earnedGold} Gold`
+      );
+
+      if (newLevel > oldLevel) {
+        setSuccess(
+          `🎊 Level Up! You are now Level ${newLevel}!`
         );
       }
 
-      // If level increased
-      if (
-        result.character &&
-        result.character.level
-      ) {
-        setSuccess(
-          `Character Level: ${result.character.level}`
+      // Store latest character locally so dashboard can
+      // refresh correctly when user returns.
+      if (updatedCharacter) {
+        localStorage.setItem(
+          "questforge_character",
+          JSON.stringify(updatedCharacter)
         );
       }
 
@@ -245,14 +312,10 @@ function Quests() {
         setSuccess("");
       }, 5000);
     } catch (err) {
-      console.error(
-        "COMPLETE QUEST ERROR:",
-        err
-      );
+      console.error("COMPLETE QUEST ERROR:", err);
 
       setError(
-        err.message ||
-          "Failed to complete quest"
+        err.message || "Failed to complete quest"
       );
     } finally {
       setCompletingId(null);
@@ -260,7 +323,7 @@ function Quests() {
   }
 
   // =========================================================
-  // DIFFICULTY XP
+  // DIFFICULTY
   // =========================================================
 
   function handleDifficultyChange(value) {
@@ -299,28 +362,20 @@ function Quests() {
 
   return (
     <main className="quests-page">
-
-      {/* =====================================================
-          HEADER
-          ===================================================== */}
+      {/* HEADER */}
 
       <header className="quests-header">
-
         <div>
-
           <p className="quests-eyebrow">
             LIFE RPG
           </p>
 
-          <h1>
-            Your Quests
-          </h1>
+          <h1>Your Quests</h1>
 
           <p className="quests-subtitle">
             Complete real-life challenges and
             grow your character.
           </p>
-
         </div>
 
         <button
@@ -329,34 +384,24 @@ function Quests() {
         >
           ← Dashboard
         </button>
-
       </header>
 
-
-      {/* =====================================================
-          CREATE QUEST
-          ===================================================== */}
+      {/* CREATE QUEST */}
 
       <section className="quest-create-card">
-
         <p className="section-label">
           NEW QUEST
         </p>
 
-        <h2>
-          Create a Quest
-        </h2>
-
+        <h2>Create a Quest</h2>
 
         <form
           className="quest-form"
           onSubmit={handleCreateQuest}
         >
-
           {/* TITLE */}
 
           <div className="form-group">
-
             <label htmlFor="quest-title">
               Quest Title
             </label>
@@ -371,14 +416,11 @@ function Quests() {
               }
               maxLength={100}
             />
-
           </div>
-
 
           {/* DESCRIPTION */}
 
           <div className="form-group">
-
             <label htmlFor="quest-description">
               Description
             </label>
@@ -388,83 +430,41 @@ function Quests() {
               placeholder="What do you need to accomplish?"
               value={description}
               onChange={(event) =>
-                setDescription(
-                  event.target.value
-                )
+                setDescription(event.target.value)
               }
               maxLength={500}
             />
-
           </div>
-
 
           {/* DIFFICULTY + XP */}
 
           <div className="form-row">
-
             <div className="form-group">
-
-              <label>
-                Difficulty
-              </label>
+              <label>Difficulty</label>
 
               <div className="difficulty-options">
-
-                <button
-                  type="button"
-                  className={`difficulty-button ${
-                    difficulty === "Easy"
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    handleDifficultyChange(
-                      "Easy"
-                    )
-                  }
-                >
-                  Easy
-                </button>
-
-                <button
-                  type="button"
-                  className={`difficulty-button ${
-                    difficulty === "Medium"
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    handleDifficultyChange(
-                      "Medium"
-                    )
-                  }
-                >
-                  Medium
-                </button>
-
-                <button
-                  type="button"
-                  className={`difficulty-button ${
-                    difficulty === "Hard"
-                      ? "active"
-                      : ""
-                  }`}
-                  onClick={() =>
-                    handleDifficultyChange(
-                      "Hard"
-                    )
-                  }
-                >
-                  Hard
-                </button>
-
+                {["Easy", "Medium", "Hard"].map(
+                  (level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      className={`difficulty-button ${
+                        difficulty === level
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        handleDifficultyChange(level)
+                      }
+                    >
+                      {level}
+                    </button>
+                  )
+                )}
               </div>
-
             </div>
 
-
             <div className="form-group">
-
               <label htmlFor="xp-reward">
                 XP Reward
               </label>
@@ -476,21 +476,15 @@ function Quests() {
                 max="1000"
                 value={xpReward}
                 onChange={(event) =>
-                  setXpReward(
-                    event.target.value
-                  )
+                  setXpReward(event.target.value)
                 }
               />
-
             </div>
-
           </div>
 
-
-          {/* REWARD PREVIEW */}
+          {/* REWARD */}
 
           <div className="quest-reward">
-
             <span className="reward-label">
               Completion Reward
             </span>
@@ -508,9 +502,7 @@ function Quests() {
                 : 20}{" "}
               Gold
             </span>
-
           </div>
-
 
           {/* ERROR */}
 
@@ -520,7 +512,6 @@ function Quests() {
             </div>
           )}
 
-
           {/* SUCCESS */}
 
           {success && (
@@ -528,7 +519,6 @@ function Quests() {
               {success}
             </div>
           )}
-
 
           {/* CREATE */}
 
@@ -541,30 +531,19 @@ function Quests() {
               ? "Creating Quest..."
               : "Create Quest"}
           </button>
-
         </form>
-
       </section>
 
-
-      {/* =====================================================
-          QUEST LIST
-          ===================================================== */}
+      {/* QUEST LIST */}
 
       <section className="quests-list-section">
-
         <div className="quests-list-header">
-
           <div>
-
             <p className="section-label">
               YOUR JOURNEY
             </p>
 
-            <h2>
-              All Quests
-            </h2>
-
+            <h2>All Quests</h2>
           </div>
 
           <span className="quest-count">
@@ -573,9 +552,7 @@ function Quests() {
               ? "Quest"
               : "Quests"}
           </span>
-
         </div>
-
 
         {/* REWARD MESSAGE */}
 
@@ -585,34 +562,24 @@ function Quests() {
           </div>
         )}
 
-
-        {/* NO QUESTS */}
+        {/* EMPTY */}
 
         {quests.length === 0 ? (
-
           <div className="empty-quests">
-
             <div className="empty-icon">
               ⚔️
             </div>
 
-            <h3>
-              No quests yet
-            </h3>
+            <h3>No quests yet</h3>
 
             <p>
               Create your first quest and
               start building your character.
             </p>
-
           </div>
-
         ) : (
-
           <div className="quests-list">
-
             {quests.map((quest) => (
-
               <div
                 key={quest.id}
                 className={`quest-card ${
@@ -621,9 +588,7 @@ function Quests() {
                     : ""
                 }`}
               >
-
                 <div className="quest-content">
-
                   <h3 className="quest-title">
                     {quest.title}
                   </h3>
@@ -635,7 +600,6 @@ function Quests() {
                   )}
 
                   <div className="quest-meta">
-
                     <span>
                       {quest.difficulty}
                     </span>
@@ -646,8 +610,7 @@ function Quests() {
 
                     <span className="gold">
                       🪙{" "}
-                      {quest.difficulty ===
-                      "Easy"
+                      {quest.difficulty === "Easy"
                         ? 5
                         : quest.difficulty ===
                           "Medium"
@@ -655,27 +618,20 @@ function Quests() {
                         : 20}{" "}
                       Gold
                     </span>
-
                   </div>
-
                 </div>
 
-
-                {/* COMPLETE BUTTON */}
+                {/* COMPLETE */}
 
                 {quest.completed ? (
-
                   <span className="completed-badge">
                     ✓ Completed
                   </span>
-
                 ) : (
-
                   <button
                     className="complete-quest-button"
                     disabled={
-                      completingId ===
-                      quest.id
+                      completingId === quest.id
                     }
                     onClick={() =>
                       handleCompleteQuest(
@@ -683,24 +639,16 @@ function Quests() {
                       )
                     }
                   >
-                    {completingId ===
-                    quest.id
+                    {completingId === quest.id
                       ? "Completing..."
                       : "Complete Quest"}
                   </button>
-
                 )}
-
               </div>
-
             ))}
-
           </div>
-
         )}
-
       </section>
-
     </main>
   );
 }
